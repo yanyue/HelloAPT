@@ -9,7 +9,10 @@ import com.squareup.javapoet.JavaFile;
 import com.squareup.javapoet.MethodSpec;
 import com.squareup.javapoet.TypeSpec;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import javax.annotation.processing.AbstractProcessor;
 import javax.annotation.processing.Messager;
@@ -41,21 +44,26 @@ public class MyProcessor extends AbstractProcessor {
         mMessager.printMessage(Diagnostic.Kind.NOTE, "Hello APT");
     }
 
-    public static CodeBlock generateIfClause(Set<? extends Element> elements, String str) {
+    public static CodeBlock generateInnerClause(List<? extends Element> elements, String str) {
         Builder mainBuilder = CodeBlock.builder();
+        if (elements.size() == 0) {
+            return mainBuilder.addStatement("return null").build();
+        }
+
         int i = 0;
         for (Element element : elements) {
             Executor[] es = element.getAnnotationsByType(Executor.class);
             if (i == 0) {
-                CodeBlock cb = CodeBlock.builder()
-//                    .beginControlFlow("if ($L == $S)", str, es[0].name())
-                    .addStatement("return new $T()", element.asType())
-//                    .endControlFlow()
-                    .build();
-                return cb;
+                mainBuilder.beginControlFlow("if ($L == $S)", str, es[0].name());
+            } else {
+                mainBuilder.nextControlFlow("else if ($L == $S)", str, es[0].name());
             }
+            mainBuilder.addStatement("return new $T()", element.asType());
             i++;
         }
+        mainBuilder.nextControlFlow("else");
+        mainBuilder.addStatement("return null");
+        mainBuilder.endControlFlow();
 
         return mainBuilder.build();
     }
@@ -64,17 +72,22 @@ public class MyProcessor extends AbstractProcessor {
         //生成类
         TypeSpec.Builder classBuilder = TypeSpec
             .classBuilder("ExecutorFactory")
-
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL);
+
+        List<Element> list = new ArrayList<>();
+        for (Element element : elements) {
+//            if (element.getClass().getSuperclass() != SpeechExecutor.class) {
+//                continue;
+//            }
+            list.add(element);
+        }
 
         //生成方法
         MethodSpec method = MethodSpec.methodBuilder("create")
             .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-            .addParameter(String.class, "string")
+            .addParameter(String.class, "sName")
             .returns(SpeechExecutor.class)
-//            .returns(void.class)
-            .addCode(generateIfClause(elements, "string"))
-            .build();
+            .addCode(generateInnerClause(list, "sName")).build();
 
         classBuilder.addMethod(method);
 
@@ -91,7 +104,7 @@ public class MyProcessor extends AbstractProcessor {
 
     @Override
     public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
-        mMessager.printMessage(Diagnostic.Kind.NOTE, "Hello APT in process");
+        mMessager.printMessage(Diagnostic.Kind.NOTE, "process size=" + annotations.size());
 
         //拿到所有添加Print注解的成员变量
         Set<? extends Element> elements = roundEnv.getElementsAnnotatedWith(Executor.class);
@@ -99,11 +112,17 @@ public class MyProcessor extends AbstractProcessor {
             //拿到成员变量名
             Name simpleName = element.getSimpleName();
             //输出成员变量名
-            mMessager.printMessage(Diagnostic.Kind.NOTE, element.toString());
+            mMessager.printMessage(Diagnostic.Kind.NOTE,
+                "simpleName =" + simpleName
+                + " superName ="
+                + element.asType().getClass());
+//                + Arrays.toString(element.asType().getKind().getInterfaces()));
         }
 
-        // 产生代码
-        generateCode(elements);
+        if (annotations.size() > 0) {
+            // 产生代码
+            generateCode(elements);
+        }
 
         return false;
     }

@@ -23,6 +23,8 @@ import javax.lang.model.element.Element;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.Name;
 import javax.lang.model.element.TypeElement;
+import javax.lang.model.util.Elements;
+import javax.lang.model.util.Types;
 import javax.tools.Diagnostic;
 
 @AutoService(Processor.class)
@@ -53,10 +55,14 @@ public class MyProcessor extends AbstractProcessor {
         int i = 0;
         for (Element element : elements) {
             Executor[] es = element.getAnnotationsByType(Executor.class);
+            if (es[0].name().length() == 0) {
+                continue;
+            }
+
             if (i == 0) {
-                mainBuilder.beginControlFlow("if ($L == $S)", str, es[0].name());
+                mainBuilder.beginControlFlow("if ($L.equals($S))", str, es[0].name());
             } else {
-                mainBuilder.nextControlFlow("else if ($L == $S)", str, es[0].name());
+                mainBuilder.nextControlFlow("else if ($L.equals($S))", str, es[0].name());
             }
             mainBuilder.addStatement("return new $T()", element.asType());
             i++;
@@ -75,10 +81,14 @@ public class MyProcessor extends AbstractProcessor {
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL);
 
         List<Element> list = new ArrayList<>();
+        Types typeUtils = processingEnv.getTypeUtils();
+        Elements elementUtils = processingEnv.getElementUtils();
+        Element speech = elementUtils.getTypeElement(SpeechExecutor.class.getCanonicalName());
         for (Element element : elements) {
-//            if (element.getClass().getSuperclass() != SpeechExecutor.class) {
-//                continue;
-//            }
+            // 判断是否实现了接口
+            if (!typeUtils.isSubtype(element.asType(), speech.asType())) {
+                continue;
+            }
             list.add(element);
         }
 
@@ -108,17 +118,7 @@ public class MyProcessor extends AbstractProcessor {
 
         //拿到所有添加Print注解的成员变量
         Set<? extends Element> elements = roundEnv.getElementsAnnotatedWith(Executor.class);
-        for (Element element : elements) {
-            //拿到成员变量名
-            Name simpleName = element.getSimpleName();
-            //输出成员变量名
-            mMessager.printMessage(Diagnostic.Kind.NOTE,
-                "simpleName =" + simpleName
-                + " superName ="
-                + element.asType().getClass());
-//                + Arrays.toString(element.asType().getKind().getInterfaces()));
-        }
-
+        // apt processor 会执行多次，这里通过 size 判断是否需要产生代码
         if (annotations.size() > 0) {
             // 产生代码
             generateCode(elements);

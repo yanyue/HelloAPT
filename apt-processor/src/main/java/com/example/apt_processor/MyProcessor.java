@@ -10,7 +10,6 @@ import com.squareup.javapoet.MethodSpec;
 import com.squareup.javapoet.TypeSpec;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -21,7 +20,6 @@ import javax.annotation.processing.Processor;
 import javax.annotation.processing.RoundEnvironment;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.Modifier;
-import javax.lang.model.element.Name;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
@@ -46,7 +44,7 @@ public class MyProcessor extends AbstractProcessor {
         mMessager.printMessage(Diagnostic.Kind.NOTE, "Hello APT");
     }
 
-    public static CodeBlock generateInnerClause(List<? extends Element> elements, String str) {
+    public CodeBlock generateInnerClause(List<? extends Element> elements, String namespace, String name) {
         Builder mainBuilder = CodeBlock.builder();
         if (elements.size() == 0) {
             return mainBuilder.addStatement("return null").build();
@@ -55,14 +53,33 @@ public class MyProcessor extends AbstractProcessor {
         int i = 0;
         for (Element element : elements) {
             Executor[] es = element.getAnnotationsByType(Executor.class);
-            if (es[0].name().length() == 0) {
+            if (es[0].namespace().length == 0) {
                 continue;
             }
 
+            String[] nameSpaceList = es[0].namespace();
+            StringBuilder tmp = new StringBuilder();
+            Builder ifClause = CodeBlock.builder();
+            ifClause.add("(");
+            for (int j = 0; j < nameSpaceList.length; ++j) {
+                if (j == 0) {
+                    ifClause.add("$L.equals($S)", namespace, nameSpaceList[j]);
+                } else {
+                    ifClause.add(" || $L.equals($S)", namespace, nameSpaceList[j]);
+                }
+            }
+            ifClause.add(")");
+
+            if (es[0].name().length() > 0) {
+                ifClause.add(" && $L.equals($S)", name, es[0].name());
+            }
+
+            mMessager.printMessage(Diagnostic.Kind.NOTE, "if-clause=" + ifClause.build());
+
             if (i == 0) {
-                mainBuilder.beginControlFlow("if ($L.equals($S))", str, es[0].name());
+                mainBuilder.beginControlFlow("if ($L)", ifClause.build());
             } else {
-                mainBuilder.nextControlFlow("else if ($L.equals($S))", str, es[0].name());
+                mainBuilder.nextControlFlow("else if ($L)", ifClause.build());
             }
             mainBuilder.addStatement("return new $T()", element.asType());
             i++;
@@ -95,9 +112,10 @@ public class MyProcessor extends AbstractProcessor {
         //生成方法
         MethodSpec method = MethodSpec.methodBuilder("create")
             .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-            .addParameter(String.class, "sName")
+            .addParameter(String.class, "nameSpace")
+            .addParameter(String.class, "name")
             .returns(SpeechExecutor.class)
-            .addCode(generateInnerClause(list, "sName")).build();
+            .addCode(generateInnerClause(list, "nameSpace", "name")).build();
 
         classBuilder.addMethod(method);
 

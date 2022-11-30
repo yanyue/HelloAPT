@@ -8,5 +8,6 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.TYPE)
 public @interface Executor {
-    String name() default "default";
+    String[] namespace() default {};
+    String name() default "";
 }

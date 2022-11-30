@@ -3,7 +3,7 @@ package com.example.helloapt;
 import com.example.apt_annotation.Executor;
 import com.example.apt_annotation.SpeechExecutor;
 
-@Executor(name="simple")
+@Executor(namespace ={"simple", "love"}, name="test")
 public class DefaultExecutor implements SpeechExecutor {
 
     @Override

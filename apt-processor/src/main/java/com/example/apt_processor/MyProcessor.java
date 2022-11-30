@@ -60,7 +60,7 @@ public class MyProcessor extends AbstractProcessor {
             String[] nameSpaceList = es[0].namespace();
             StringBuilder tmp = new StringBuilder();
             Builder ifClause = CodeBlock.builder();
-            ifClause.add("(");
+            if (nameSpaceList.length > 1) ifClause.add("(");
             for (int j = 0; j < nameSpaceList.length; ++j) {
                 if (j == 0) {
                     ifClause.add("$L.equals($S)", namespace, nameSpaceList[j]);
@@ -68,7 +68,7 @@ public class MyProcessor extends AbstractProcessor {
                     ifClause.add(" || $L.equals($S)", namespace, nameSpaceList[j]);
                 }
             }
-            ifClause.add(")");
+            if (nameSpaceList.length > 1) ifClause.add(")");
 
             if (es[0].name().length() > 0) {
                 ifClause.add(" && $L.equals($S)", name, es[0].name());

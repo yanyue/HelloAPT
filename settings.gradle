@@ -16,3 +16,5 @@ rootProject.name = "HelloAPT"
 include ':app'
 include ':apt-annotation'
 include ':apt-processor'
+include ':dm'
+include ':bear'

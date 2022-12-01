@@ -6,3 +6,10 @@ java {
     sourceCompatibility = JavaVersion.VERSION_1_7
     targetCompatibility = JavaVersion.VERSION_1_7
 }
+
+dependencies {
+    implementation project(path: ':bear')
+
+    // java library 不能依赖 Android Library
+    // implementation project(path: ':dm')
+}

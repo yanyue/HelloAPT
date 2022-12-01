@@ -1,5 +1,9 @@
 package com.example.apt_annotation;
 
-public class MyClass {
+import com.example.bear.Bear;
 
+public class MyClass {
+    public void test() {
+        new Bear();
+    }
 }
